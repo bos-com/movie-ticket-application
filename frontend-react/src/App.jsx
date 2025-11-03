@@ -1,0 +1,70 @@
+import React from 'react'
+import { Routes, Route, Navigate, Link } from 'react-router-dom'
+import Home from './pages/Home'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import MovieDetail from './pages/MovieDetail'
+import Dashboard from './pages/Dashboard'
+import Admin from './pages/Admin'
+import AddEditMovie from './pages/AddEditMovie'
+import { useAuth } from './state/AuthContext'
+
+function Protected({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
+
+function AdminOnly({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user || user.role !== 'admin') return <Navigate to="/" replace />
+  return children
+}
+
+function NavBar() {
+  const { user, logout } = useAuth()
+  return (
+    <nav className="navbar navbar-expand navbar-dark app-navbar mb-3">
+      <div className="container-fluid">
+        <Link className="navbar-brand" to="/">MovieFlex Java</Link>
+        <div className="navbar-nav ms-auto">
+          {!user && (
+            <>
+              <Link className="nav-link" to="/login">Login</Link>
+              <Link className="nav-link" to="/register">Register</Link>
+            </>
+          )}
+          {user && (
+            <>
+              {user.role === 'admin' && (
+                <Link className="nav-link" to="/admin">Admin</Link>
+              )}
+              <Link className="nav-link" to="/dashboard">My Tickets</Link>
+              <button className="btn btn-sm btn-outline-light ms-2" onClick={logout}>Logout</button>
+            </>
+          )}
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+export default function App() {
+  return (
+    <div className="container">
+      <NavBar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/movies/:id" element={<MovieDetail />} />
+        <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
+        <Route path="/admin" element={<AdminOnly><Admin /></AdminOnly>} />
+        <Route path="/admin/add" element={<AdminOnly><AddEditMovie mode="add" /></AdminOnly>} />
+        <Route path="/admin/edit/:id" element={<AdminOnly><AddEditMovie mode="edit" /></AdminOnly>} />
+      </Routes>
+    </div>
+  )
+}
