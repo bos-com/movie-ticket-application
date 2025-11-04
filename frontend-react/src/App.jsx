@@ -25,11 +25,27 @@ function AdminOnly({ children }) {
 
 function NavBar() {
   const { user, logout } = useAuth()
+  const [light, setLight] = React.useState(() => {
+    try { return localStorage.getItem('theme') === 'light' } catch { return false }
+  })
+  React.useEffect(() => {
+    if (light) {
+      document.body.classList.add('theme-light')
+      try { localStorage.setItem('theme','light') } catch {}
+    } else {
+      document.body.classList.remove('theme-light')
+      try { localStorage.setItem('theme','dark') } catch {}
+    }
+  }, [light])
+  const navClass = `navbar navbar-expand ${light ? 'navbar-light' : 'navbar-dark'} app-navbar mb-3`
+  const themeBtnClass = `btn btn-sm ${light ? 'btn-outline-dark' : 'btn-outline-light'} me-2`
+  const logoutBtnClass = `btn btn-sm ${light ? 'btn-outline-dark' : 'btn-outline-light'} ms-2`
   return (
-    <nav className="navbar navbar-expand navbar-dark app-navbar mb-3">
+    <nav className={navClass}>
       <div className="container-fluid">
         <Link className="navbar-brand" to="/">MovieFlex Java</Link>
         <div className="navbar-nav ms-auto">
+          <button aria-label="Toggle theme" className={themeBtnClass} onClick={()=>setLight(v=>!v)}>{light ? '☀️' : '🌙'}</button>
           {!user && (
             <>
               <Link className="nav-link" to="/login">Login</Link>
@@ -42,7 +58,7 @@ function NavBar() {
                 <Link className="nav-link" to="/admin">Admin</Link>
               )}
               <Link className="nav-link" to="/dashboard">My Tickets</Link>
-              <button className="btn btn-sm btn-outline-light ms-2" onClick={logout}>Logout</button>
+              <button className={logoutBtnClass} onClick={logout}>Logout</button>
             </>
           )}
         </div>

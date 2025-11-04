@@ -8,6 +8,7 @@ export default function Home() {
   const nav = useNavigate()
   const [movies, setMovies] = React.useState([])
   const [q, setQ] = React.useState('')
+  const [genre, setGenre] = React.useState('')
   const [error, setError] = React.useState('')
   const WELCOME = 'Welcome to MovieFlex'
   const [typed, setTyped] = React.useState('')
@@ -42,7 +43,13 @@ export default function Home() {
     return () => clearTimeout(t)
   }, [])
 
-  const filtered = movies.filter(m => (m.title || '').toLowerCase().includes(q.toLowerCase()))
+  const normalized = (s) => (s || '').toLowerCase()
+  const filtered = movies.filter(m => {
+    const hit = normalized(m.title).includes(normalized(q)) || normalized(m.poster).includes(normalized(q))
+    const genreMatch = !genre || normalized(m.genre).includes(normalized(genre))
+    return hit && genreMatch
+  })
+  const genreOptions = ['Action','Sci-Fi','Horror','Adventure']
 
   const onDelete = async (id) => {
     if (!window.confirm('Delete this movie?')) return
@@ -121,6 +128,27 @@ export default function Home() {
           </div>
         ) : null}
       </div>
+
+      {user && (
+        <div className="row g-2 mb-3">
+          <div className="col-12 col-md-8">
+            <input
+              className="form-control search-input"
+              placeholder="Search by title or poster..."
+              value={q}
+              onChange={e=>setQ(e.target.value)}
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <select className="form-select" value={genre} onChange={e=>setGenre(e.target.value)}>
+              <option value="">All genres</option>
+              {genreOptions.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
       <div className="row g-3">
         {filtered.map(m => (
           <div className="col-12 col-md-6 col-lg-4" key={m._id}>

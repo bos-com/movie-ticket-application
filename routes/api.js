@@ -4,6 +4,9 @@ const { body, validationResult } = require('express-validator');
 const Movie = require('../models/Movie');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 const router = express.Router();
 
@@ -16,6 +19,20 @@ function isAdmin(req, res, next) {
   if (req.session && req.session.user && req.session.user.role === 'admin') return next();
   return res.status(403).json({ message: 'Admin only' });
 }
+
+// Upload config
+const uploadDir = path.join(__dirname, '..', 'public', 'images');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, uploadDir),
+  filename: (_, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_');
+    const name = `${base}_${Date.now()}${ext.toLowerCase()}`;
+    cb(null, name);
+  }
+});
+const upload = multer({ storage });
 
 // Auth API
 router.post('/auth/register',
@@ -118,6 +135,13 @@ router.delete('/movies/:id', isAdmin, async (req, res) => {
   } catch (e) {
     console.error(e); res.status(400).json({ message: 'Invalid request' });
   }
+});
+
+// Poster upload (admin only)
+router.post('/upload', isAdmin, upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+  const filename = req.file.filename;
+  return res.json({ filename, url: `/images/${filename}` });
 });
 
 // Booking and tickets

@@ -119,3 +119,25 @@ body{background:var(--bg);color:var(--text)}
 /* Hover glow for movie cards */
 .movie-card:hover{transform:translateY(-3px);border-color:rgba(16,185,129,.45);
   box-shadow:0 14px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(16,185,129,.35), 0 16px 70px rgba(16,185,129,.32), 0 0 40px rgba(16,185,129,.22)}
+
+/* Light theme overrides */
+body.theme-light{
+  --bg:#f6f7fb;
+  --panel:#ffffff;
+  --text:#111827;
+  --muted:#4b5563;
+  --primary:#2563eb;
+  --accent:#e5e7eb;
+}
+body.theme-light .navbar{background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.6),transparent)}
+body.theme-light .card{border-color:#e5e7eb}
+body.theme-light .form-control, body.theme-light .form-select{background:#fff;border:1px solid #e5e7eb;color:var(--text)}
+body.theme-light .btn-outline-primary{color:#111;border-color:#cbd5e1}
+body.theme-light .app-navbar{background:linear-gradient(180deg,#ffffff 0%, #f8fafc 100%)!important;border-color:#e5e7eb}
+body.theme-light .card-title{color:#111827}
+body.theme-light .card-text{color:#374151}
+body.theme-light .auth-card{background:#ffffff;border-color:#e5e7eb;color:#111827}
+body.theme-light .auth-card h2{color:#111827}
+body.theme-light .auth-header p{color:#374151}
+body.theme-light .movie-card .card-body{background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)}
+body.theme-light .link{color:#1d4ed8}

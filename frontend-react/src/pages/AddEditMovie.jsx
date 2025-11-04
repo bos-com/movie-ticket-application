@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { api } from '../api'
+import { api, upload, API_BASE } from '../api'
 
 export default function AddEditMovie({ mode }) {
   const isEdit = mode === 'edit'
@@ -10,6 +10,10 @@ export default function AddEditMovie({ mode }) {
   const [form, setForm] = React.useState({ title: '', poster: '', totalSeats: '', showTime: '', genre: '', duration: '', price: '' })
   const [error, setError] = React.useState('')
   const [msg, setMsg] = React.useState('')
+  const [uploading, setUploading] = React.useState(false)
+  const origin = React.useMemo(() => {
+    try { return new URL(API_BASE).origin } catch { return '' }
+  }, [])
 
   React.useEffect(() => {
     if (isEdit && id) {
@@ -28,6 +32,18 @@ export default function AddEditMovie({ mode }) {
   }, [isEdit, id])
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+
+  const onFile = async (e) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setError(''); setMsg(''); setUploading(true)
+    try {
+      const r = await upload(f)
+      setForm(prev => ({ ...prev, poster: r.filename }))
+      setMsg('Poster uploaded')
+    } catch (er) { setError(er.message) }
+    finally { setUploading(false) }
+  }
 
   const onSubmit = async (e) => {
     e.preventDefault(); setError(''); setMsg('')
@@ -68,9 +84,17 @@ export default function AddEditMovie({ mode }) {
             <input className="form-control" name="title" value={form.title} onChange={onChange} required />
           </div>
           <div className="mb-3">
-            <label className="form-label">Poster filename (e.g., avatar.jpg)</label>
-            <input className="form-control" name="poster" value={form.poster} onChange={onChange} required />
-            <div className="form-text">Files must exist under backend `public/images/`.</div>
+            <label className="form-label">Poster</label>
+            <div className="d-flex gap-2 mb-2">
+              <input className="form-control" name="poster" value={form.poster} onChange={onChange} placeholder="filename.jpg" />
+              <input className="form-control" type="file" accept="image/*" onChange={onFile} disabled={uploading} />
+            </div>
+            <div className="form-text">You can type an existing filename or upload from your computer.</div>
+            {form.poster && (
+              <div className="mt-2" style={{maxWidth:'200px'}}>
+                <img className="img-fluid rounded" src={`${origin}/images/${form.poster}`} alt="poster" onError={(e)=>{e.target.style.display='none'}} />
+              </div>
+            )}
           </div>
           <div className="row g-3">
             <div className="col-12 col-md-6">
@@ -85,7 +109,13 @@ export default function AddEditMovie({ mode }) {
           <div className="row g-3 mt-1">
             <div className="col-12 col-md-6">
               <label className="form-label">Genre</label>
-              <input className="form-control" name="genre" value={form.genre} onChange={onChange} />
+              <select className="form-select" name="genre" value={form.genre} onChange={onChange} required>
+                <option value="">Select a genre</option>
+                <option value="Action">Action</option>
+                <option value="Sci-Fi">Sci-Fi</option>
+                <option value="Horror">Horror</option>
+                <option value="Adventure">Adventure</option>
+              </select>
             </div>
             <div className="col-12 col-md-6">
               <label className="form-label">Duration</label>
