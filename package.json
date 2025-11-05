@@ -6,9 +6,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "dev:all": "concurrently -n backend,frontend -c green,cyan \"npm run dev\" \"npm --prefix frontend-react run dev\"",
+    "dev:all": "concurrently -n backend,frontend,mailer,movie -c green,cyan,magenta,yellow \"npm run dev\" \"npm --prefix frontend-react run dev\" \"npm run dev:mailer\" \"npm run dev:movie-service\"",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:react-gateway": "node index.js"
+    "start:react-gateway": "node index.js",
+    "dev:mailer": "mvn -f backend-java/mailer-service/pom.xml spring-boot:run",
+    "dev:movie-service": "mvn -f backend-java/movie-service/pom.xml spring-boot:run"
   },
   "keywords": [],
   "author": "",

@@ -36,9 +36,29 @@ app.use(flash());
 app.use((req, res, next) => {
   res.locals.success_msg = req.flash('success_msg');
   res.locals.error_msg = req.flash('error_msg');
-  res.locals.user = req.session.user || null; // 👈 this line is important
+  res.locals.user = req.session.user || null; 
   next();
 });
+
+// Proxy GET requests for movies to Java movie-service (port 8081 by default)
+const movieServiceTarget = process.env.MOVIE_SERVICE_URL || 'http://localhost:8082';
+const moviesFilter = (pathname, req) => {
+  // Disabled: let Node's /api/movies routes handle reads instead of proxying to Java service
+  return false;
+};
+app.use(createProxyMiddleware(moviesFilter, {
+  target: movieServiceTarget,
+  changeOrigin: true,
+  pathRewrite: { '^/api': '' },
+  logLevel: 'silent',
+  onProxyRes(proxyRes) {
+    // Remove any CORS headers from the proxied response; let our cors() middleware set them
+    delete proxyRes.headers['access-control-allow-origin'];
+    delete proxyRes.headers['access-control-allow-credentials'];
+    delete proxyRes.headers['access-control-allow-headers'];
+    delete proxyRes.headers['access-control-allow-methods'];
+  }
+}));
 
 // Routes
 app.use('/api', apiRoutes); // JSON API for React/clients

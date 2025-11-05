@@ -1,0 +1,6 @@
+com\example\mailer\service\EmailService.class
+com\example\mailer\controller\EmailController.class
+com\example\mailer\config\DevMailConfig$1.class
+com\example\mailer\dto\EmailRequest.class
+com\example\mailer\config\DevMailConfig.class
+com\example\mailer\MailerServiceApplication.class

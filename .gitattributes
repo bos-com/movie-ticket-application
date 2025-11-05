@@ -1,0 +1,8 @@
+# De-emphasize JS/React and build/vendor assets so Java shows prominently on GitHub Linguist
+frontend-react/** linguist-vendored
+public/** linguist-vendored
+node_modules/** linguist-vendored
+routes/** linguist-vendored
+models/** linguist-vendored
+index.js linguist-vendored
+seedMovies.js linguist-vendored

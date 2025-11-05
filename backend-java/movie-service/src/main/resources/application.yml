@@ -1,0 +1,11 @@
+server:
+  port: 8082
+spring:
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/movietickets}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
