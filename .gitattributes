@@ -1,8 +1,22 @@
-# De-emphasize JS/React and build/vendor assets so Java shows prominently on GitHub Linguist
-frontend-react/** linguist-vendored
-public/** linguist-vendored
+# Enable GitHub Linguist to detect all languages (Java, JS, React, etc.)
+# Remove vendored filtering so all folders count in language stats
+
+# Detect Java files
+*.java linguist-language=Java
+backend-java/** linguist-detectable=true
+
+# Detect JavaScript (Node + React)
+*.js linguist-language=JavaScript
+*.jsx linguist-language=JavaScript
+frontend-react/** linguist-detectable=true
+
+# Detect HTML, CSS
+*.html linguist-language=HTML
+*.css linguist-language=CSS
+public/** linguist-detectable=true
+
+# Exclude only common vendor/dependency folders
 node_modules/** linguist-vendored
-routes/** linguist-vendored
-models/** linguist-vendored
-index.js linguist-vendored
-seedMovies.js linguist-vendored
+frontend-react/node_modules/** linguist-vendored
+dist/** linguist-vendored
+frontend-react/dist/** linguist-vendored
