@@ -104,14 +104,7 @@ npm run dev:all
 ## Push to GitHub
 1. Create a new repo on GitHub (no README/license/gitignore).
 2. In the project root, run:
-```
-git init
-git add .
-git commit -m "Initial commit: MovieFlex (Node + React + Java mailer)"
-git branch -M main
-git remote add origin https://github.com/<your-username>/<your-repo>.git
-git push -u origin main
-```
+
 3. Recommended `.gitignore` (do not commit secrets or dependencies):
 ```
 node_modules/
