@@ -197,7 +197,3 @@ movie-ticket-system/
 - Token mismatch: set Node `.env` `MAILER_TOKEN` and Java `SERVICE_TOKEN`/`service.token` to the same value.
 - SMTP/email not sent: configure `spring.mail.*` properties and use provider-specific app passwords.
 
-## Production notes
-- Replace in-memory sessions with `connect-mongo` store.
-- Add CSRF protection on forms/API if needed.
-- Build React (`npm run build` in `frontend-react/`) and serve static assets via a suitable web server or Express static.
