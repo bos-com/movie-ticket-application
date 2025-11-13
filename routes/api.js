@@ -102,7 +102,12 @@ router.get('/movies', async (req, res) => {
 });
 
 router.get('/movies/:id', async (req, res) => {
-  const m = await Movie.findById(req.params.id);
+  // Increment views when a movie detail is fetched
+  const m = await Movie.findByIdAndUpdate(
+    req.params.id,
+    { $inc: { views: 1 } },
+    { new: true }
+  );
   if (!m) return res.status(404).json({ message: 'Not found' });
   res.json(m);
 });
@@ -144,19 +149,48 @@ router.post('/upload', isAdmin, upload.single('file'), (req, res) => {
   return res.json({ filename, url: `/images/${filename}` });
 });
 
+// Likes: toggle like for current user
+router.post('/movies/:id/like', isLoggedIn, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const m = await Movie.findById(req.params.id);
+    if (!m) return res.status(404).json({ message: 'Movie not found' });
+    const has = (m.likedBy || []).includes(String(userId));
+    if (has) {
+      m.likedBy = m.likedBy.filter(x => String(x) !== String(userId));
+      m.likes = Math.max(0, Number(m.likes || 0) - 1);
+    } else {
+      m.likedBy = [...(m.likedBy || []), String(userId)];
+      m.likes = Number(m.likes || 0) + 1;
+    }
+    await m.save();
+    res.json({ id: m._id, likes: m.likes, liked: !has });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Booking and tickets
 router.post('/movies/:id/book', isLoggedIn, async (req, res) => {
-  const { seat } = req.body;
+  const seat = Number(req.body.seat)
   if (!seat || seat <= 0) return res.status(400).json({ message: 'Invalid seat' });
-  const movie = await Movie.findById(req.params.id);
+  const movie = await Movie.findById(req.params.id)
   if (!movie) return res.status(404).json({ message: 'Movie not found' });
-  if (seat > movie.totalSeats) return res.status(400).json({ message: 'Seat out of range' });
-  if (movie.bookedSeats.includes(seat)) return res.status(400).json({ message: 'Seat already booked' });
+  if (seat > Number(movie.totalSeats || 0)) return res.status(400).json({ message: 'Seat out of range' });
 
-  movie.bookedSeats.push(seat);
-  await movie.save();
-  const ticket = await Ticket.create({ movie: movie._id, seat, userId: req.session.user.id, paid: false });
-  res.json({ id: ticket._id, movieId: movie._id, seat: ticket.seat, paid: ticket.paid, bookedAt: ticket.bookedAt });
+  // Atomic reserve: only push seat if it's not already booked
+  const updated = await Movie.findOneAndUpdate(
+    { _id: req.params.id, bookedSeats: { $ne: seat } },
+    { $push: { bookedSeats: seat } },
+    { new: true }
+  )
+  if (!updated) {
+    return res.status(400).json({ message: 'Seat already booked' })
+  }
+
+  const ticket = await Ticket.create({ movie: updated._id, seat, userId: req.session.user.id, paid: false });
+  res.json({ id: ticket._id, movieId: updated._id, seat: ticket.seat, paid: ticket.paid, bookedAt: ticket.bookedAt });
 });
 
 router.post('/tickets/:id/pay', isLoggedIn, async (req, res) => {

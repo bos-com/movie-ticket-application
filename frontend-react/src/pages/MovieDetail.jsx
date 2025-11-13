@@ -12,10 +12,24 @@ export default function MovieDetail() {
   const [ticket, setTicket] = React.useState(null)
   const [msg, setMsg] = React.useState('')
   const [error, setError] = React.useState('')
+  const imgUrl = (name) => `http://localhost:5000/images/${encodeURI(name || '')}`
 
   React.useEffect(() => {
     api(`/movies/${id}`).then(setMovie).catch(e => setError(e.message))
   }, [id])
+
+  // Mark as Continue Watching in localStorage
+  React.useEffect(() => {
+    if (!movie?._id) return
+    try {
+      const key = 'cw'
+      const max = 12
+      const curr = JSON.parse(localStorage.getItem(key) || '[]')
+      const idStr = String(movie._id)
+      const next = [idStr, ...curr.filter(x => String(x) !== idStr)].slice(0, max)
+      localStorage.setItem(key, JSON.stringify(next))
+    } catch {}
+  }, [movie])
 
   const seats = React.useMemo(() => {
     if (!movie) return []
@@ -30,7 +44,13 @@ export default function MovieDetail() {
       const t = await api(`/movies/${id}/book`, { method: 'POST', body: { seat: Number(seat) } })
       setTicket(t)
       setMsg('Seat booked. Proceed to payment.')
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      setError(e.message)
+      // If the seat got taken in the meantime, refresh movie to show latest booked seats
+      if ((e?.message || '').toLowerCase().includes('already booked')) {
+        try { const latest = await api(`/movies/${id}`); setMovie(latest) } catch {}
+      }
+    }
   }
 
   const pay = async () => {
@@ -52,7 +72,7 @@ export default function MovieDetail() {
   return (
     <div className="row">
       <div className="col-12 col-lg-6">
-        <img src={`http://localhost:5000/images/${movie.poster}`} alt={movie.title} className="img-fluid rounded mb-3" onError={(e)=>{e.target.src=''}} />
+        <img src={imgUrl(movie.poster)} alt={movie.title} className="img-fluid rounded mb-3" onError={(e)=>{e.target.src=''}} />
       </div>
       <div className="col-12 col-lg-6">
         <h2 className="h4">{movie.title}</h2>

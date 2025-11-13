@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route, Navigate, Link } from 'react-router-dom'
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -43,7 +43,7 @@ function NavBar() {
   return (
     <nav className={navClass}>
       <div className="container-fluid">
-        <Link className="navbar-brand" to="/">MovieFlex Java</Link>
+        <Link className="navbar-brand" to="/">Browse</Link>
         <div className="navbar-nav ms-auto">
           <button aria-label="Toggle theme" className={themeBtnClass} onClick={()=>setLight(v=>!v)}>{light ? '☀️' : '🌙'}</button>
           {!user && (
@@ -68,9 +68,11 @@ function NavBar() {
 }
 
 export default function App() {
+  const location = useLocation()
+  const isHome = location.pathname === '/'
   return (
-    <div className="container">
-      <NavBar />
+    <div className={isHome ? '' : 'container'}>
+      {!isHome && <NavBar />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
