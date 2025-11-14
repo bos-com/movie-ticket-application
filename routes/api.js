@@ -34,6 +34,36 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Follow: toggle follow for current user; store on User.following
+router.post('/movies/:id/follow', isLoggedIn, async (req, res) => {
+  try {
+    const uid = req.session.user.id
+    const user = await User.findById(uid)
+    if (!user) return res.status(401).json({ message: 'Not authenticated' })
+    const id = String(req.params.id)
+    const has = (user.following || []).includes(id)
+    user.following = has ? user.following.filter(x => String(x) !== id)
+                         : [ ...(user.following || []), id ]
+    await user.save()
+    return res.json({ following: user.following })
+  } catch (e) {
+    console.error(e)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// Get current user's following list
+router.get('/me/following', isLoggedIn, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.user.id)
+    if (!user) return res.status(401).json({ message: 'Not authenticated' })
+    return res.json({ following: user.following || [] })
+  } catch (e) {
+    console.error(e)
+    return res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // Auth API
 router.post('/auth/register',
   body('name').notEmpty(),

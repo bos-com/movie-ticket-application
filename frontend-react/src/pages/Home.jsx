@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { API_BASE } from '../api'
 import { useAuth } from '../state/AuthContext'
 
 export default function Home() {
@@ -14,6 +15,8 @@ export default function Home() {
   const [typed, setTyped] = React.useState('')
   const [activeTab, setActiveTab] = React.useState('Browse')
   const [sort, setSort] = React.useState('Popular')
+  const [notifOpen, setNotifOpen] = React.useState(false)
+  const [profileOpen, setProfileOpen] = React.useState(false)
   const genreChips = ['Action','Horror','Classic','Marvel','Sci-Fi','Adventure']
   const [follows, setFollows] = React.useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('follows') || '[]')) } catch { return new Set() }
@@ -21,26 +24,45 @@ export default function Home() {
   const [reactions, setReactions] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem('reactions') || '{}') } catch { return {} }
   })
+  const [liked, setLiked] = React.useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('liked') || '[]')) } catch { return new Set() }
+  })
   const previewImages = React.useMemo(() => [
     'avengers.jpg',
     'inception.jpg',
     'interstellar.jpg',
-    'avatar.jpg',
     'spiderman.webp',
-    'frozen_ii.jpg'
+    'frozen.jpg',
+    'frozen_ii.jpg',
+    'batman.jpg'
   ], [])
 
-  const imgUrl = (name) => `http://localhost:5000/images/${encodeURI(name)}`
+  const [slide, setSlide] = React.useState(0)
+
+  const IMG_BASE = React.useMemo(() => {
+    try {
+      const base = (API_BASE || '').replace(/\/?api\/?$/, '')
+      return base || 'http://localhost:5000'
+    } catch { return 'http://localhost:5000' }
+  }, [])
+  const imgUrl = (name) => `${IMG_BASE}/images/${encodeURI(name)}`
 
   // Card actions: follow, like, reactions
   const saveFollows = (next) => {
     setFollows(new Set(next))
     try { localStorage.setItem('follows', JSON.stringify(Array.from(next))) } catch {}
   }
-  const toggleFollow = (id) => {
-    const next = new Set(follows)
-    if (next.has(id)) next.delete(id); else next.add(id)
-    saveFollows(next)
+  const saveLiked = (next) => {
+    setLiked(new Set(next))
+    try { localStorage.setItem('liked', JSON.stringify(Array.from(next))) } catch {}
+  }
+  const toggleFollow = async (id) => {
+    try {
+      if (!user) { nav('/login'); return }
+      const res = await api(`/movies/${id}/follow`, { method: 'POST' })
+      const arr = Array.isArray(res.following) ? res.following : []
+      saveFollows(new Set(arr))
+    } catch {}
   }
   const cycleEmoji = (current) => {
     const set = ['😀','😍','😂','😮','😢']
@@ -61,12 +83,15 @@ export default function Home() {
       if (!user) { nav('/login'); return }
       const res = await api(`/movies/${m._id}/like`, { method: 'POST' })
       setMovies(ms => ms.map(x => x._id === m._id ? { ...x, likes: res.likes } : x))
+      const next = new Set(liked)
+      if (next.has(m._id)) next.delete(m._id); else next.add(m._id)
+      saveLiked(next)
     } catch {}
   }
 
   const Actions = ({ m }) => (
     <div className="card-actions">
-      <button className="icon-btn" title="Like" onClick={()=>toggleLike(m)}>❤️</button>
+      <button className={`icon-btn ${liked.has(m._id)?'active':''}`} title="Like" onClick={()=>toggleLike(m)}>❤️</button>
       <button className={`icon-btn ${follows.has(m._id)?'active':''}`} title={follows.has(m._id)?'Unfollow':'Follow'} onClick={()=>toggleFollow(m._id)}>⭐</button>
       <button className="icon-btn" title="React" onClick={()=>toggleReaction(m._id)}>{reactions[m._id] || '😀'}</button>
     </div>
@@ -75,6 +100,35 @@ export default function Home() {
   React.useEffect(() => {
     api('/movies').then(setMovies).catch(e => setError(e.message))
   }, [])
+
+  // Load following for logged-in user
+  React.useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      if (!user) return
+      try {
+        const r = await api('/me/following')
+        if (!cancelled) saveFollows(new Set(Array.isArray(r.following) ? r.following : []))
+      } catch {}
+    }
+    load()
+    return () => { cancelled = true }
+  }, [user])
+
+  // When on Trending tab, refresh movies periodically to keep like counts fresh
+  React.useEffect(() => {
+    if (activeTab !== 'Trending') return
+    let stop = false
+    const load = async () => {
+      try {
+        const list = await api('/movies')
+        if (!stop) setMovies(list)
+      } catch {}
+    }
+    load()
+    const t = setInterval(load, 10000)
+    return () => { stop = true; clearInterval(t) }
+  }, [activeTab])
 
   React.useEffect(() => {
     let i = 0
@@ -127,6 +181,34 @@ export default function Home() {
     return avengerByPoster || avengerByTitle || filtered[0] || null
   }, [filtered])
 
+  const slides = React.useMemo(() => {
+    const map = new Map(movies.map(m => [String(m.poster||'').toLowerCase(), m]))
+    const list = previewImages
+      .filter(n => !!n)
+      .map(n => {
+        const key = String(n).toLowerCase()
+        const m = map.get(key) || movies.find(x => String(x.poster||'').toLowerCase().includes(key.split('.')[0])) || null
+        return m ? { poster: m.poster, title: m.title, genre: m.genre, showTime: m.showTime, duration: m.duration, id: m._id }
+                 : { poster: n, title: n.split('.')[0].replaceAll('_',' ').replaceAll('-',' '), genre: 'Adventure, Action', showTime: 'Today', duration: '2h', id: null }
+      })
+    return list.length ? list : (featured ? [{ poster: featured.poster, title: featured.title, genre: featured.genre, showTime: featured.showTime, duration: featured.duration, id: featured._id }] : [])
+  }, [movies, previewImages, featured])
+
+  const prevSlide = React.useCallback(() => {
+    const len = Math.max(1, slides.length)
+    setSlide(s => (s - 1 + len) % len)
+  }, [slides.length])
+  const nextSlide = React.useCallback(() => {
+    const len = Math.max(1, slides.length)
+    setSlide(s => (s + 1) % len)
+  }, [slides.length])
+
+  React.useEffect(() => {
+    if (!slides.length) return
+    const t = setInterval(nextSlide, 5000)
+    return () => clearInterval(t)
+  }, [slides.length, nextSlide])
+
   return (
     <div className="home-layout">
       {error && <div className="alert alert-danger">{error}</div>}
@@ -137,13 +219,15 @@ export default function Home() {
           <div className="side-section">News Feed</div>
           <a className={`side-link ${activeTab==='Browse'?'active':''}`} onClick={()=>setActiveTab('Browse')}>Browse</a>
           <a className={`side-link ${activeTab==='Trending'?'active':''}`} onClick={()=>setActiveTab('Trending')}>Trending</a>
-          <a className={`side-link ${activeTab==='Following'?'active':''}`} onClick={()=>setActiveTab('Following')}>Following</a>
+          <a className={`side-link ${activeTab==='Following'?'active':''}`} onClick={()=>setActiveTab('Following')}>
+            Following {follows.size ? `(${follows.size})` : ''}
+          </a>
           <a className={`side-link ${activeTab==='Your Videos'?'active':''}`} onClick={()=>setActiveTab('Your Videos')}>Your Videos</a>
           <a className={`side-link ${activeTab==='Playlist'?'active':''}`} onClick={()=>setActiveTab('Playlist')}>Playlist</a>
           <div className="side-section mt-3">Following</div>
           <div className="side-follow">
-            {previewImages.map((n)=> (
-              <img key={n} src={imgUrl(n)} alt="avatar" />
+            {(movies.filter(m => follows.has(m._id)).slice(0,10)).map(m => (
+              <img key={m._id} src={imgUrl(m.poster)} alt="avatar" />
             ))}
           </div>
           <div className="side-spacer" />
@@ -168,23 +252,65 @@ export default function Home() {
             <input className="search-all" placeholder="Search everything" value={q} onChange={(e)=>setQ(e.target.value)} />
           </div>
           <div className="topbar-right">
-            <button className="btn btn-ghost btn-sm" aria-label="Notifications">🔔</button>
-            {user ? (
-              <button className="btn btn-ghost btn-sm" onClick={logout}>Logout</button>
-            ) : (
-              <div className="avatar-sm">👤</div>
+            <button
+              className={`btn btn-ghost btn-sm icon-circle ${notifOpen ? 'active' : ''}`}
+              aria-label="Notifications"
+              onClick={()=>{ setNotifOpen(v=>!v); setProfileOpen(false) }}
+            >🔔</button>
+            <div className="profile-wrap">
+              <button
+                className={`btn btn-ghost btn-sm icon-circle ${profileOpen ? 'active' : ''}`}
+                aria-label="Profile"
+                onClick={()=>{ setProfileOpen(v=>!v); setNotifOpen(false) }}
+              >{user ? (user.name?.[0] || '👤') : '👤'}</button>
+              {profileOpen && (
+                <div className="dropdown-panel">
+                  {user ? (
+                    <>
+                      <div className="dropdown-item text-muted">Signed in as <strong>{user.name}</strong></div>
+                      <button className="dropdown-item" onClick={logout}>Logout</button>
+                    </>
+                  ) : (
+                    <>
+                      <Link className="dropdown-item" to="/login">Login</Link>
+                      <Link className="dropdown-item" to="/register">Register</Link>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+            {notifOpen && (
+              <div className="dropdown-panel">
+                <div className="dropdown-item text-muted">No new notifications</div>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Hero hidden for logged-in users */}
-        {!user && (
+        {/* Hero section (shown for all users) */}
           <div className="hero-wrap mb-4">
             <div className="hero-split">
-              <div
-                className="hero-left"
-                style={{ backgroundImage: `url(${imgUrl(featured?.poster || 'avengers.jpg')})` }}
-              />
+              <div className="hero-left">
+                <img
+                  key={(slides[slide]?.poster) || 'avengers.jpg'}
+                  className="slide-img"
+                  src={imgUrl((slides[slide]?.poster) || 'avengers.jpg')}
+                  alt="slide"
+                  onError={(e)=>{
+                    const cur = (slides[slide]?.poster) || 'avengers.jpg'
+                    if (!e.target.dataset.fallback){
+                      e.target.dataset.fallback = '1'
+                      e.target.src = `http://localhost:5000/images/${encodeURI(cur)}`
+                    }
+                  }}
+                />
+                {slides.length > 1 && (
+                  <>
+                    <button className="slide-nav prev" aria-label="Previous" onClick={prevSlide}>‹</button>
+                    <button className="slide-nav next" aria-label="Next" onClick={nextSlide}>›</button>
+                  </>
+                )}
+              </div>
               <div className="hero-right-pane">
                 <div className="hero-content hero-right">
                   <div className="d-flex align-items-center gap-2 mb-2">
@@ -192,24 +318,25 @@ export default function Home() {
                     <span className="score-pill">7.8</span>
                     <span className="score-pill muted">English</span>
                   </div>
-                  <h1 className="display-5 fw-bold mb-2 text-shadow anim-fade anim-delay-2">{featured?.title || 'Featured Movie'}</h1>
+                  <h1 className="display-5 fw-bold mb-2 text-shadow anim-fade anim-delay-2">{(slides[slide]?.title) || featured?.title || 'Featured Movie'}</h1>
                   <div className="d-flex flex-wrap gap-2 mb-2 anim-fade anim-delay-3">
-                    {(((featured && featured.genre) ? featured.genre.split(',') : ['Adventure','Fantasy','Action'])).map(g=> (
+                    {(((slides[slide] && slides[slide].genre) ? String(slides[slide].genre).split(',') : ((featured && featured.genre) ? featured.genre.split(',') : ['Adventure','Fantasy','Action']))).map(g=> (
                       <span key={g} className="chip">{g.trim()}</span>
                     ))}
                   </div>
                   <div className="text-muted mb-3 anim-fade anim-delay-4">
-                    <span>English · {(featured && featured.showTime) || 'Today'} · {(featured && featured.duration) || '2h'}</span>
+                    <span>English · {(slides[slide] && slides[slide].showTime) || (featured && featured.showTime) || 'Today'} · {(slides[slide] && slides[slide].duration) || (featured && featured.duration) || '2h'}</span>
                   </div>
                   <p className="hero-desc mb-3 text-shadow anim-fade anim-delay-5">Enjoy the latest blockbuster on MovieFlex with immersive visuals and sound.</p>
                   <div className="d-flex gap-2 anim-fade anim-delay-7">
-                    {featured ? (
+                    {(slides[slide] && slides[slide].id) || featured ? (
                       <>
                         <button
                           className="btn btn-pill"
                           onClick={() => {
                             if (!user) return nav('/login')
-                            nav(`/movies/${featured._id}`)
+                            const id = slides[slide]?.id || featured?._id
+                            if (id) nav(`/movies/${id}`)
                           }}
                         >
                           Watch
@@ -218,7 +345,8 @@ export default function Home() {
                           className="btn btn-ghost"
                           onClick={() => {
                             if (!user) return nav('/login')
-                            nav(`/movies/${featured._id}`)
+                            const id = slides[slide]?.id || featured?._id
+                            if (id) nav(`/movies/${id}`)
                           }}
                         >
                           Book
@@ -232,7 +360,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        )}
+        )
 
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="h5 m-0">{activeTab === 'Trending' ? 'Top 10 Trending' : 'Browse'}</h2>
@@ -273,7 +401,48 @@ export default function Home() {
                   <div className="card h-100 movie-card">
                     <div className="movie-thumb">
                     <Actions m={m} />
+                    {(user && (liked.has(m._id) || follows.has(m._id))) && (
+                      <div className="user-tag">{user.name}</div>
+                    )}
                     <img src={imgUrl(m.poster)} alt={m.title} onError={(e)=>{e.target.src=''}} />
+                    </div>
+                    <div className="card-body d-flex flex-column">
+                      <h5 className="card-title">{m.title}</h5>
+                      <p className="card-text mb-1">Showtime: {m.showTime}</p>
+                      <p className="card-text mb-3">Seats: {m.totalSeats}</p>
+                      <div className="mt-auto d-flex gap-2">
+                        {user ? (
+                          <Link className="btn btn-primary" to={`/movies/${m._id}`}>View & Book</Link>
+                        ) : (
+                          <Link className="btn btn-outline-primary" to="/login">BOOK NOW</Link>
+                        )}
+                        {user?.role === 'admin' && (
+                          <>
+                            <Link className="btn btn-warning" to={`/admin/edit/${m._id}`}>✏️ Edit</Link>
+                            <button className="btn btn-danger" onClick={() => onDelete(m._id)}>🗑 Delete</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'Following' && (
+          <>
+            <div className="row g-3">
+              {(movies.filter(m => follows.has(m._id))).map(m => (
+                <div className="col-12 col-md-6 col-lg-4" key={m._id}>
+                  <div className="card h-100 movie-card">
+                    <div className="movie-thumb">
+                      <Actions m={m} />
+                      {(user && (liked.has(m._id) || follows.has(m._id))) && (
+                        <div className="user-tag">{user.name}</div>
+                      )}
+                      <img src={imgUrl(m.poster)} alt={m.title} onError={(e)=>{e.target.src=''}} />
                     </div>
                     <div className="card-body d-flex flex-column">
                       <h5 className="card-title">{m.title}</h5>
@@ -310,18 +479,21 @@ export default function Home() {
             </div>
             <div className="row g-3">
               {([...movies]
-                .sort((a,b)=> Number((b.bookedSeats||[]).length) - Number((a.bookedSeats||[]).length))
+                .sort((a,b)=> Number(b.likes || 0) - Number(a.likes || 0))
                 .slice(0,10)
               ).map(m => (
                 <div className="col-12 col-md-6 col-lg-4" key={m._id}>
                   <div className="card h-100 movie-card">
                     <div className="movie-thumb">
                       <Actions m={m} />
+                      {(user && (liked.has(m._id) || follows.has(m._id))) && (
+                        <div className="user-tag">{user.name}</div>
+                      )}
                       <img src={imgUrl(m.poster)} alt={m.title} onError={(e)=>{e.target.src=''}} />
                     </div>
                     <div className="card-body d-flex flex-column">
                       <h5 className="card-title">{m.title}</h5>
-                      <p className="card-text mb-1">Likes: {(m.bookedSeats||[]).length}</p>
+                      <p className="card-text mb-1">Likes: {Number(m.likes || 0)}</p>
                       <div className="mt-auto d-flex gap-2">
                         {user ? (
                           <Link className="btn btn-primary" to={`/movies/${m._id}`}>View & Book</Link>
