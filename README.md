@@ -5,6 +5,8 @@ A movie ticket system built on your existing Node/Express app, extended with a R
 - React SPA (Vite + React Router + Bootstrap)
 - Admin CRUD, user authentication via session, booking with seat validation, and simple payment flag
 
+
+
 ## Tech stack
 - Backend: Node.js, Express, Mongoose, express-session, connect-flash, express-validator
 - Mailer: Java 17, Spring Boot (Web, Mail, Validation, Actuator)
@@ -197,3 +199,4 @@ movie-ticket-system/
 - Token mismatch: set Node `.env` `MAILER_TOKEN` and Java `SERVICE_TOKEN`/`service.token` to the same value.
 - SMTP/email not sent: configure `spring.mail.*` properties and use provider-specific app passwords.
 
+created
