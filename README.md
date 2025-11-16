@@ -199,4 +199,4 @@ movie-ticket-system/
 - Token mismatch: set Node `.env` `MAILER_TOKEN` and Java `SERVICE_TOKEN`/`service.token` to the same value.
 - SMTP/email not sent: configure `spring.mail.*` properties and use provider-specific app passwords.
 
-created
+created by medisoft
