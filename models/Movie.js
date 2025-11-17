@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const MovieSchema = new mongoose.Schema({
   title: { type: String, required: true },
   poster: { type: String, required: true },
-  totalSeats: { type: Number, required: true }, // was "seats"
+  totalSeats: { type: Number, required: true }, 
   bookedSeats: { type: [Number], default: [] },
   showTime: { type: String, required: true },
   genre: { type: String },
