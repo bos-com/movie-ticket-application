@@ -288,6 +288,7 @@ export default function Home() {
         </div>
 
         {/* Hero section (shown for all users) */}
+          {!user && (
           <div className="hero-wrap mb-4">
             <div className="hero-split">
               <div className="hero-left">
@@ -360,8 +361,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        )
-
+        )}
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="h5 m-0">{activeTab === 'Trending' ? 'Top 10 Trending' : 'Browse'}</h2>
           {user?.role === 'admin' ? (

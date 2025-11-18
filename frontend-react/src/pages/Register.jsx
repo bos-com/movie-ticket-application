@@ -4,7 +4,7 @@ import { useAuth } from '../state/AuthContext'
 
 export default function Register() {
   const nav = useNavigate()
-  const { register } = useAuth()
+  const { register, login } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,8 +17,8 @@ export default function Register() {
     e.preventDefault(); setError(''); setMsg('')
     try {
       await register({ name, email, password, isAdmin, adminCode: isAdmin ? adminCode : undefined })
-      setMsg('Registered. Please login.')
-      setTimeout(()=> nav('/login'), 800)
+      await login(email, password)
+      nav('/')
     } catch (e) { setError(e.message) }
   }
 
