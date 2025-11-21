@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../state/AuthContext'
 
+// initial of the moviedetails
 export default function MovieDetail() {
   const { id } = useParams()
   const nav = useNavigate()
