@@ -19,7 +19,7 @@ export default function MovieDetail() {
     api(`/movies/${id}`).then(setMovie).catch(e => setError(e.message))
   }, [id])
 
-  // Mark as Continue Watching in localStorage
+  // Mark as Continue Watching in localStorage only
   React.useEffect(() => {
     if (!movie?._id) return
     try {
